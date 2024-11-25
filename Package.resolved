@@ -14,8 +14,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/KittyMac/Chronometer.git",
       "state" : {
-        "revision" : "b4808d59a175b1f764cc3d7e2e927e5476b10427",
-        "version" : "0.1.11"
+        "revision" : "d21b89e5cb5929b5175bdb3ad710a52cbf497eaa",
+        "version" : "0.1.12"
       }
     },
     {
@@ -23,8 +23,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzyzanowskim/CryptoSwift.git",
       "state" : {
-        "revision" : "678d442c6f7828def400a70ae15968aef67ef52d",
-        "version" : "1.8.3"
+        "revision" : "c9c3df6ab812de32bae61fc0cd1bf6d45170ebf0",
+        "version" : "1.8.2"
       }
     },
     {
@@ -32,8 +32,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Iso18013-Data-Model.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "90674a06e7666c5b59f945793e71ff135a872d08"
+        "revision" : "90674a06e7666c5b59f945793e71ff135a872d08",
+        "version" : "0.2.0"
       }
     },
     {
@@ -41,8 +41,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Iso18013-Data-Transfer.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "1f12dd464b4587de7773403aeb332f869aeae9db"
+        "revision" : "e9dcf4a9aa808c73999cf9c7b432e22ce75c34c4",
+        "version" : "0.2.0"
       }
     },
     {
@@ -50,8 +50,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Iso18013-Security.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "54e5d43fd1759965804a183bfaf557ff164e73ed"
+        "revision" : "905f7564668bf92af788ff56a2c199880fc850f5",
+        "version" : "0.2.0"
       }
     },
     {
@@ -59,8 +59,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Jose-Swift.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "62251d7a05618319053fc124e45e3c49a963a11b"
+        "revision" : "6fb7fad64a8f9aaf38700c9418fb27442dd00c48",
+        "version" : "0.2.0"
       }
     },
     {
@@ -68,8 +68,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Openid4vci.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "5a22d5b2a9f8af5225edd36437bdcb68a01fee41"
+        "revision" : "76ee530dc6c36eb623d10e3c364dd18f10e8b234",
+        "version" : "0.2.0"
+      }
+    },
+    {
+      "identity" : "eewa-ios-presentation-exchange-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Authada/eEWA-iOS-Presentation-Exchange-Swift.git",
+      "state" : {
+        "revision" : "faa07353468b62c5ae15f7199dae34985814ee1a",
+        "version" : "0.2.0"
       }
     },
     {
@@ -77,8 +86,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Sdjwt-Swift.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "6a5f1b278c94830f5078223bf9b73dc872a22854"
+        "revision" : "d3bb3bc69ee436c7fa8429b81ca2e6e161e4b12d",
+        "version" : "0.2.0"
+      }
+    },
+    {
+      "identity" : "eewa-ios-siop-openid4vp-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Authada/eEWA-iOS-Siop-Openid4vp-Swift.git",
+      "state" : {
+        "revision" : "9f06dcba1e7a1b3812d8607840e841b76aef69ab",
+        "version" : "0.2.0"
       }
     },
     {
@@ -86,26 +104,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Authada/eEWA-iOS-Wallet-Storage.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "b21aaef95da45cb40eed0c4e23cbc87cfbc551af"
-      }
-    },
-    {
-      "identity" : "eudi-lib-ios-presentation-exchange-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-presentation-exchange-swift.git",
-      "state" : {
-        "revision" : "2c5486e3c3e38dab5018445af545677b62e9a712",
-        "version" : "0.0.43"
-      }
-    },
-    {
-      "identity" : "eudi-lib-ios-siop-openid4vp-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-siop-openid4vp-swift.git",
-      "state" : {
-        "revision" : "0423c93112b9b2b11a1e202addf02a93f88d3e96",
-        "version" : "0.1.1"
+        "revision" : "d6f7539d60227ef6227e18d4c17385ca6215b0f9",
+        "version" : "0.2.0"
       }
     },
     {
@@ -113,17 +113,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/KittyMac/Hitch.git",
       "state" : {
-        "revision" : "733c8e04e04813bc6e3cc105850a4eb657bdacfb",
-        "version" : "0.4.133"
+        "revision" : "d6c147a1d70992db39a141cb5bf9cf8fbb776250",
+        "version" : "0.4.148"
       }
     },
     {
       "identity" : "joseswift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/niscy-eudiw/JOSESwift.git",
+      "location" : "https://github.com/airsidemobile/JOSESwift.git",
       "state" : {
-        "revision" : "518cedba79ef18867191811b161471298b6cb7c8",
-        "version" : "2.4.1-gcm"
+        "revision" : "c2664a902e75c0426a1d43132bd4babc6fd173d3",
+        "version" : "3.0.0"
       }
     },
     {
@@ -158,8 +158,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/KittyMac/Sextant.git",
       "state" : {
-        "revision" : "52a77d0bce0210cf9557faef7fd0adb9a6da02fb",
-        "version" : "0.4.31"
+        "revision" : "b2141d4a693e2a768720534009cb621252be39a0",
+        "version" : "0.4.33"
       }
     },
     {
@@ -167,8 +167,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/KittyMac/Spanker.git",
       "state" : {
-        "revision" : "96e58f68274a2e6f370fff153ceb5674a06936c4",
-        "version" : "0.2.47"
+        "revision" : "d4b439bf76a40fb45d86a24d13b9c26e7d630eee",
+        "version" : "0.2.49"
       }
     },
     {

@@ -109,7 +109,7 @@ public class WalletAttestationManager {
         let payload = Payload(payloadData)
         
         //Signer
-        let signer = Signer(signingAlgorithm: sigAlgorithm, key: key)!
+        let signer = Signer(signatureAlgorithm: sigAlgorithm, key: key)!
         
         //build JWS
         let jws = try JWS(header: header, payload: payload, signer: signer)
@@ -218,7 +218,7 @@ public class WalletAttestationManager {
         let payload = Payload(payloadData)
         
         //Signer
-        let signer = Signer(signingAlgorithm: sigAlgorithm, key: privateKey)!
+        let signer = Signer(signatureAlgorithm: sigAlgorithm, key: privateKey)!
         
         //build JWS
         let jws = try JWS(header: header, payload: payload, signer: signer)

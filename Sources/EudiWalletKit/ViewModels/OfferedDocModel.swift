@@ -30,9 +30,19 @@ limitations under the License.
 */
 
 import Foundation
+@preconcurrency import OpenID4VCI
 
-public struct OfferedDocModel {
+public struct OfferedIssuanceModel: Sendable {
+    
+    public let docModels: [OfferedDocModel]
+    public let txCodeSpec: TxCode?
+    public var isTxCodeRequired: Bool { txCodeSpec != nil }
+    public let isValidated: Bool
+}
+
+public struct OfferedDocModel: Sendable {
 	public let issuerName: String
 	public let docType: String
 	public let displayName: String
+    public let docFormat: [DataFormat]
 }

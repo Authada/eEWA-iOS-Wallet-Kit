@@ -137,7 +137,8 @@ public class OpenId4VpService: PresentationService {
         
         let inputDescriptors = vp.presentationDefinition.inputDescriptors
         for desc in inputDescriptors {
-            if desc.id == DocumentManager.euPidDocType {
+            let matchingProxyPidDocTypes = ProxyPidDocument.firstProxyPidDocTypeMatching(inputDescritor: desc)
+            if matchingProxyPidDocTypes != nil {
                 guard let formats = desc.formatContainer?.formats else {
                     continue
                 }
@@ -201,7 +202,8 @@ public class OpenId4VpService: PresentationService {
 	///   - userAccepted: True if user accepted to send the response
 	///   - itemsToSend: The selected items to send organized in document types and namespaces
 	public func sendResponse(userAccepted: Bool, itemsToSend: RequestItems, onSuccess: ((URL?) -> Void)?) async throws {
-		guard let pd = presentationDefinition, let resolved = resolvedRequestData else {
+		
+        guard let pd = presentationDefinition, let resolved = resolvedRequestData else {
 			throw PresentationSession.makeError(str: "Unexpected error")
 		}
 		guard userAccepted, itemsToSend.count > 0 else {
@@ -210,62 +212,164 @@ public class OpenId4VpService: PresentationService {
 		}
 		logger.info("Openid4vp request items: \(itemsToSend)")
         
-        var requestedFormat :DataFormat = .cbor
         
-        let pidInputDescriptorFormats = pd.inputDescriptors.filter { $0.id == DocumentManager.euPidDocType}
-        guard pidInputDescriptorFormats.count > 0 else {
-            //TODO: Support presentations of EAA(s) again
-            throw PresentationSession.makeError(str: "currently only PID presentations are supported")
+        
+        let inputDescriptorFormats = pd.inputDescriptors
+        
+        var usePIDIssuing = false
+        let pidInputDescriptorFormats = inputDescriptorFormats.filter({
+            if ProxyPidDocument.firstProxyPidDocTypeMatching(inputDescritor: $0) != nil && itemsToSend[ProxyPidDocument.proxyTagID]?[$0.id] != nil {
+                return true
+            }
+            return false
+        })
+        if pidInputDescriptorFormats.count > 0 {
+            usePIDIssuing = true
         }
-        let supportedInputDescriptorFormats = pidInputDescriptorFormats.filter { $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "vc+sd-jwt" || $0["designation"].string?.lowercased() == "mso_mdoc" }) ?? false}
-        guard let choosenInputDecriptorFormat = supportedInputDescriptorFormats.first else {
+        
+        let supportedInputDescriptorFormats = inputDescriptorFormats.filter { $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "vc+sd-jwt" || $0["designation"].string?.lowercased() == "mso_mdoc" }) ?? false}
+        
+        if supportedInputDescriptorFormats.count <= 0 {
             throw PresentationSession.makeError(str: "all request formats unsupported")
         }
-        guard let choosenFormat = choosenInputDecriptorFormat.formatContainer?.formats.filter({ $0["designation"].string?.lowercased() == "vc+sd-jwt" || $0["designation"].string?.lowercased() == "mso_mdoc" }).first else {
-            throw PresentationSession.makeError(str: "no supported format found")
-        }
-        if (choosenFormat["designation"].string?.lowercased() == "vc+sd-jwt") {
-            requestedFormat = .sdjwt
+        
+        guard let docMgr = self.docManager else {
+            throw PresentationSession.makeError(str: "document manager missing")
         }
         
-        let claims = itemsToSend[DocumentManager.proxyTag]?[DocumentManager.euPidDocType]
-        
-        guard let issuerSignedDocs = try await docManager?.fetchExternalDocuments(issueJWK: authenticatedChannelKeyForPIDIssuing, format: requestedFormat, claims: claims) else {
-            throw PresentationSession.makeError(str: "DOCUMENT_ERROR")
-        }
-        guard let issuedDoc = issuerSignedDocs.first else { throw PresentationSession.makeError(str: "DOCUMENT_ERROR") }
-        
-        let consent: ClientConsent
-        
-        if issuedDoc.docDataType == .sjwt {
-            
-            let claimNames = itemsToSend[DocumentManager.proxyTag]?[DocumentManager.euPidDocType]
-            
-            let serializedSDJWT = try createSDJWTPresentation(issuedDoc, resolved, claimNames: claimNames, choosenFormat)
-            
-            consent = .vpToken(vpToken: .generic(serializedSDJWT), presentationSubmission: .init(id: UUID().uuidString, definitionID: pd.id, descriptorMap: pd.inputDescriptors.filter { $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "vc+sd-jwt" }) ?? false }.map { DescriptorMap(id: $0.id, format: "vc+sd-jwt", path: "$")} ))
-        }
-        else {
-            guard let (iss, dpk) = issuedDoc.getCborData() else { throw PresentationSession.makeError(str: "DOCUMENT_ERROR")}
-            let docsToSend = [issuedDoc.id:iss.1]
-            let devicePrivateKey = [issuedDoc.id:dpk.1]
-            
-#if DEBUG
-            let algorithm = iss.1.issuerAuth.verifyAlgorithm
-            switch algorithm  {
-            case .dvsp256, .dvsp384, .dvsp512:
-                print("authenticated channel: \(algorithm)")
-            default:
-                print("authenticated channel: none")
+        let idsToPresent = itemsToSend.compactMap { (key: String, value: [String : [String]]) in
+            if key != ProxyPidDocument.proxyTagID {
+                return key
             }
-#endif
-            
-            guard let (deviceResponse, _, _) = try MdocHelpers.getDeviceResponseToSend(deviceRequest: nil, issuerSigned: docsToSend, selectedItems: itemsToSend, eReaderKey: eReaderPub, devicePrivateKeys: devicePrivateKey, sessionTranscript: sessionTranscript, dauthMethod: .deviceSignature) else { throw PresentationSession.makeError(str: "DOCUMENT_ERROR") }
-            // Obtain consent
-            let vpTokenStr = Data(deviceResponse.toCBOR(options: CBOROptions()).encode()).base64URLEncodedString()
-            
-            consent = .vpToken(vpToken: .msoMdoc(vpTokenStr, apu: mdocGeneratedNonce.base64urlEncode), presentationSubmission: .init(id: UUID().uuidString, definitionID: pd.id, descriptorMap: pd.inputDescriptors.filter { $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "mso_mdoc" }) ?? false }.map { DescriptorMap(id: $0.id, format: "mso_mdoc", path: "$")} ))
+            return nil
         }
+        var docsToPresent :[WalletStorage.Document] = try await docMgr.fetchDocuments(for: idsToPresent) ?? []
+                
+        if usePIDIssuing {
+            guard let choosenPIDInputDescriptorFormat = pidInputDescriptorFormats.first else {
+                throw PresentationSession.makeError(str: "all PID request formats unsupported")
+            }
+            guard let choosenFormat = choosenPIDInputDescriptorFormat.formatContainer?.formats.filter({ $0["designation"].string?.lowercased() == "vc+sd-jwt" || $0["designation"].string?.lowercased() == "mso_mdoc" }).first else {
+                throw PresentationSession.makeError(str: "no supported PID format found")
+            }
+            
+            var requestedFormat :DataFormat = .cbor
+            var requestedPidDocType :String = DocumentManager.euPidDocTypeMdoc
+            if (choosenFormat["designation"].string?.lowercased() == "vc+sd-jwt") {
+                requestedFormat = .sdjwt
+                requestedPidDocType = ProxyPidDocument.firstProxyPidDocTypeMatching(inputDescritor: choosenPIDInputDescriptorFormat) ?? DocumentManager.euPidDocTypeSdjwt
+            }
+            
+            let claims = itemsToSend[ProxyPidDocument.proxyTagID]?[choosenPIDInputDescriptorFormat.id]
+            
+            guard let issuerSignedDocs = try await docMgr.fetchExternalDocuments(issueJWK: authenticatedChannelKeyForPIDIssuing, format: requestedFormat, docType: requestedPidDocType, claims: claims) else {
+                throw PresentationSession.makeError(str: "DOCUMENT_ERROR")
+            }
+            guard let issuedDoc = issuerSignedDocs.first else {
+                throw PresentationSession.makeError(str: "DOCUMENT_ERROR")
+            }
+            docsToPresent.insert(issuedDoc, at: 0)
+        }
+                        
+        var descriptorMaps :Array<DescriptorMap> = []
+        var verifiablePresentations :[VpToken.VerifiablePresentation] = []
+        var vpTokenApu: Base64URL? = nil
+        
+        let count = docsToPresent.count
+        
+        for (i, docToPresent) in docsToPresent.enumerated() {
+            
+            let path = count > 1 ? "$[\(i)]" : "$"
+            
+            if docToPresent.docDataType == .sdjwt {
+                                
+                //Check if format for docType is requested
+                let matchingInputDescriptors = inputDescriptorFormats.filter {
+                    if $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "vc+sd-jwt" }) ?? false {
+                        let docTypesOfInputDescritor : [String] = Openid4VpUtils.vctFilterDocTypes(inDesc: $0) ?? []
+                        if (docTypesOfInputDescritor.contains(docToPresent.docType)) {
+                            return true
+                        }
+                    }
+                    return false
+                }
+                
+                //Search matching input descriptor
+                var choosenInputDescriptor = matchingInputDescriptors.first
+                let namespaceDictKeys = itemsToSend[docToPresent.id]?.keys
+                if let namespaceDictKeys {
+                    for inDesc in matchingInputDescriptors {
+                        if namespaceDictKeys.contains(inDesc.id) {
+                            choosenInputDescriptor = inDesc
+                            break
+                        }
+                    }
+                }
+                                            
+                guard let finalChoosenInputDescriptor = choosenInputDescriptor else {
+                    throw PresentationSession.makeError(str: "document does not match requested data type (vc+sd-jwt) for document type \(docToPresent.docType)")
+                }
+                
+                guard let choosenFormat = finalChoosenInputDescriptor.formatContainer?.formats.filter({ $0["designation"].string?.lowercased() == "vc+sd-jwt"}).first else {
+                    throw PresentationSession.makeError(str: "no supported format found for \(docToPresent.docType)")
+                }
+                
+                let claimNames = itemsToSend[docToPresent.id]?[finalChoosenInputDescriptor.id]
+                
+                let serializedSDJWT = try createSDJWTPresentation(docToPresent, resolved, claimNames: claimNames, choosenFormat)
+                
+                let decriptorMap :DescriptorMap = DescriptorMap(id: finalChoosenInputDescriptor.id, format: "vc+sd-jwt", path: path)
+                let vp :VpToken.VerifiablePresentation = .generic(serializedSDJWT)
+                
+                descriptorMaps.append(decriptorMap)
+                verifiablePresentations.append(vp)
+            }
+            else {
+                guard let (iss, dpk) = docToPresent.getCborData() else { throw PresentationSession.makeError(str: "DOCUMENT_ERROR")}
+                let docsToSend = [docToPresent.id:iss.1]
+                let devicePrivateKey = [docToPresent.id:dpk.1]
+                
+#if DEBUG
+                if usePIDIssuing {
+                    let algorithm = iss.1.issuerAuth.verifyAlgorithm
+                    switch algorithm  {
+                    case .dvsp256, .dvsp384, .dvsp512:
+                        print("authenticated channel: \(algorithm)")
+                    default:
+                        print("authenticated channel: none")
+                    }
+                }
+#endif
+                
+                guard let (deviceResponse, _, _) = try MdocHelpers.getDeviceResponseToSend(deviceRequest: nil, issuerSigned: docsToSend, selectedItems: itemsToSend, eReaderKey: eReaderPub, devicePrivateKeys: devicePrivateKey, sessionTranscript: sessionTranscript, dauthMethod: .deviceSignature) else { throw PresentationSession.makeError(str: "DOCUMENT_ERROR") }
+                // Obtain consent
+                let vpTokenStr = Data(deviceResponse.toCBOR(options: CBOROptions()).encode()).base64URLEncodedString()
+                
+                
+                //Check if format for docType is requested
+                let matchingInputDescriptor = pd.inputDescriptors.filter {
+                    if $0.formatContainer?.formats.contains(where: { $0["designation"].string?.lowercased() == "mso_mdoc" }) ?? false && $0.id == docToPresent.docType {
+                        return true
+                    }
+                    return false
+                }
+                if (matchingInputDescriptor.count <= 0) {
+                    throw PresentationSession.makeError(str: "document does not match requested data type (mso_mdoc) for document type \(docToPresent.docType)")
+                }
+                
+                let decriptorMap :DescriptorMap = DescriptorMap(id: docToPresent.docType, format: "mso_mdoc", path: path)
+                let vp :VpToken.VerifiablePresentation = .msoMdoc(vpTokenStr)
+                
+                descriptorMaps.append(decriptorMap)
+                verifiablePresentations.append(vp)
+                
+                if vpTokenApu == nil {
+                    vpTokenApu = mdocGeneratedNonce.base64urlEncode
+                }
+            }
+        }
+        
+        let consent :ClientConsent = .vpToken(vpToken: VpToken(apu:vpTokenApu, verifiablePresentations: verifiablePresentations), presentationSubmission: .init(id: UUID().uuidString, definitionID: pd.id, descriptorMap: Array(descriptorMaps)))
         
 		try await SendVpTokenConsent(consent, pd, resolved, onSuccess)
 	}
@@ -298,6 +402,10 @@ public class OpenId4VpService: PresentationService {
         case .x509SanDns(clientId: let clientId, certificate: _):
             audience = clientId
         case .x509SanUri(clientId: let clientId, certificate: _):
+            audience = clientId
+        case .didClient(did: let did):
+            audience = did.uri.absoluteString
+        case .attested(clientId: let clientId):
             audience = clientId
         }
         
@@ -358,21 +466,7 @@ public class OpenId4VpService: PresentationService {
         let finalDisclosures :[Disclosure]
         if let claimNames {
             //Filter disclosures
-            var disclosuresToPresent :[Disclosure] = []
-            
-            for c in sdjwt.disclosures {
-                let jsonString = String( data:c.base64URLUnescaped().base64Decoded() ?? Data(), encoding: .utf8) ?? "?"
-                if let claimArray = JSON(parseJSON: jsonString).arrayObject, claimArray.count == 3, let claimName = claimArray[1] as? String {
-                    if (claimNames.contains(claimName)) {
-                        disclosuresToPresent.append(c)
-                    }
-                }
-                else {
-                    disclosuresToPresent.append(c)
-                }
-            }
-            
-            finalDisclosures = disclosuresToPresent
+            finalDisclosures = sdjwt.filteredDisclosures(with: claimNames) ?? []
         }
         else {
             finalDisclosures = sdjwt.disclosures
@@ -421,7 +515,7 @@ public class OpenId4VpService: PresentationService {
 		guard let rsaJWK = try? RSAPublicKey(publicKey: rsaPublicKey, additionalParameters: ["use": "sig", "kid": UUID().uuidString, "alg": "RS256"]) else { return nil }
 		guard let keySet = try? WebKeySet(jwk: rsaJWK) else { return nil }
         #warning("TODO: .x509SanUri(trust: chainVerifier), .x509SanDns(trust: chainVerifier) removed from supportedClientIDSchemes")
-		var supportedClientIdSchemes: [SupportedClientIdScheme] = []
+		var supportedClientIdSchemes: [SupportedClientIdScheme] = [.x509SanDns(trust: chainVerifier)]
 		if let verifierApiUrl, let verifierLegalName {
 			let verifierMetaData = PreregisteredClient(clientId: "Verifier", legalName: verifierLegalName, jarSigningAlg: JWSAlgorithm(.RS256), jwkSetSource: WebKeySource.fetchByReference(url: URL(string: "\(verifierApiUrl)/wallet/public-keys.json")!))
 			supportedClientIdSchemes += [.preregistered(clients: [verifierMetaData.clientId: verifierMetaData])]

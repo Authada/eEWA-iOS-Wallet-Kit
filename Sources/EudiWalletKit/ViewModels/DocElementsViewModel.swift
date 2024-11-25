@@ -37,6 +37,7 @@ public struct DocElementsViewModel: Identifiable {
 	public var id: String { docId }
 	public var docId: String
 	public let docType: String
+    public let dataFormat: DataFormat?
 	public var isEnabled: Bool
 	public var elements: [ElementViewModel]
 }
@@ -61,13 +62,45 @@ extension DocElementsViewModel {
 	}
 }
 
-extension RequestItems {
-	func toDocElementViewModels(docId: String, docType: String, valid: Bool) -> [DocElementsViewModel] {
-		compactMap { dType,nsItems in
-			if dType != docType { nil }
-			else { DocElementsViewModel(docId: docId, docType: docType, isEnabled: valid, elements: DocElementsViewModel.fluttenItemViewModels(nsItems, valid: valid, mandatoryElementKeys: DocElementsViewModel.getMandatoryElementKeys(docType: docType))) }
-		}
-	}
+extension RequestedDocumentFormatItems {
+    func toDocElementViewModels(docId: String, docTypes: [String], dataFormat:DataFormat?, valid: Bool) -> [DocElementsViewModel] {
+        
+        var finalViewModels :[DocElementsViewModel] = []
+        
+        
+        for (identifierKey, formatDict) in self {
+            var matchingDetails :[DataFormat:RequestedDocumentDetails] = [:]
+            if let dataFormat {
+                if let formatDetails = formatDict[dataFormat] {
+                    matchingDetails[dataFormat] = formatDetails
+                }
+            }
+            else {
+                matchingDetails = formatDict
+            }
+            
+            for dFormat in matchingDetails.keys {
+                if let details = matchingDetails[dFormat] {
+                    for docType in docTypes {
+                        if details.allowedDocTypes.contains(docType) {
+                            var nsItems = details.fields
+                            if var fieldNames = nsItems[identifierKey],
+                               fieldNames.contains("vct"),
+                               (dataFormat == nil || dataFormat == .sdjwt) {
+                                fieldNames.removeAll(where: { $0 == "vct" })
+                                nsItems[identifierKey] = fieldNames
+                            }
+                            let viewM = DocElementsViewModel(docId: docId, docType: docType, dataFormat: dFormat, isEnabled: valid, elements: DocElementsViewModel.fluttenItemViewModels(nsItems, valid: valid, mandatoryElementKeys: DocElementsViewModel.getMandatoryElementKeys(docType: docType)))
+                            finalViewModels.append(viewM)
+                            break //only one docType is needed
+                        }
+                    }
+                }
+            }
+        }
+
+        return finalViewModels
+    }
 }
 
 extension Array where Element == DocElementsViewModel {
@@ -78,7 +111,7 @@ extension Array where Element == DocElementsViewModel {
 		for otherDE in other {
 			if let exist = first(where: { $0.docId == otherDE.docId})	{
 				let newElements = (exist.elements + otherDE.elements).sorted(by: { $0.isEnabled && $1.isDisabled })
-				res.append(DocElementsViewModel(docId: exist.docId, docType: exist.docType, isEnabled: exist.isEnabled, elements: newElements))
+                res.append(DocElementsViewModel(docId: exist.docId, docType: exist.docType, dataFormat: exist.dataFormat, isEnabled: exist.isEnabled, elements: newElements))
 			}
 			else { res.append(otherDE) }
 		}

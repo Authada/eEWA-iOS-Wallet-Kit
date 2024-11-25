@@ -15,11 +15,11 @@ let package = Package(
     dependencies: [
 		.package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.3"),
-		.package(url: "https://github.com/Authada/eEWA-iOS-Iso18013-Data-Transfer.git", branch: "main"),
-		.package(url: "https://github.com/Authada/eEWA-iOS-Wallet-Storage.git", branch: "main"),
-        .package(url: "https://github.com/eu-digital-identity-wallet/eudi-lib-ios-siop-openid4vp-swift.git", exact: "0.1.1"),
-		.package(url: "https://github.com/Authada/eEWA-iOS-Openid4vci.git", branch: "main"),
-        .package(url: "https://github.com/Authada/eEWA-iOS-Sdjwt-Swift.git", branch: "main")
+		.package(url: "https://github.com/Authada/eEWA-iOS-Iso18013-Data-Transfer.git", exact: "0.2.0"),
+		.package(url: "https://github.com/Authada/eEWA-iOS-Wallet-Storage.git", exact: "0.2.0"),
+        .package(url: "https://github.com/Authada/eEWA-iOS-Siop-Openid4vp-Swift.git", exact: "0.2.0"),
+		.package(url: "https://github.com/Authada/eEWA-iOS-Openid4vci.git", exact: "0.2.0"),
+        .package(url: "https://github.com/Authada/eEWA-iOS-Sdjwt-Swift.git", exact: "0.2.0")
 	],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -28,7 +28,7 @@ let package = Package(
             name: "EudiWalletKit", dependencies: [
 		    	.product(name: "MdocDataTransfer18013", package: "eewa-ios-iso18013-data-transfer"),
 				.product(name: "WalletStorage", package: "eewa-ios-wallet-storage"),
-				.product(name: "SiopOpenID4VP", package: "eudi-lib-ios-siop-openid4vp-swift"),
+				.product(name: "SiopOpenID4VP", package: "eewa-ios-siop-openid4vp-swift"),
 				.product(name: "OpenID4VCI", package: "eewa-ios-openid4vci"),
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "eudi-lib-sdjwt-swift", package: "eewa-ios-sdjwt-swift"),

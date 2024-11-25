@@ -119,8 +119,25 @@ extension BlePresentationService: MdocOfflineDelegate {
 	///   - handleSelected: Callback function to call after user selection of items to send
 	public func didReceiveRequest(_ request: [String : Any], handleSelected: @escaping (Bool, MdocDataTransfer18013.RequestItems?) -> Void) {
 		self.handleSelected = handleSelected
-		self.request = request
-		continuationRequest?.resume(returning: request)
+        
+        //Convert RequestItems to RequestedDocumentFormatItems with mDoc format
+        var convertedRequest = request
+        for requestItemKey in ["valid_items_requested", "error_items_requested"] {
+            if let reqItem = convertedRequest[requestItemKey] as? RequestItems {
+                var newReqDFItem :RequestedDocumentFormatItems = [:]
+                for key in reqItem.keys {
+                    if let value = reqItem[key] {
+                        let newDetails = RequestedDocumentDetails(allowedDocTypes: [key], fields: value) //for mDoc is id == docType
+                        let newFormatValue = [DataFormat.cbor:newDetails]
+                        newReqDFItem[key] = newFormatValue
+                    }
+                }
+                convertedRequest[requestItemKey] = newReqDFItem
+            }
+        }
+        
+		self.request = convertedRequest
+		continuationRequest?.resume(returning: convertedRequest)
 		continuationRequest = nil
 	}
 	

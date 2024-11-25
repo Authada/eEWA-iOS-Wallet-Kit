@@ -35,6 +35,14 @@ import MdocDataTransfer18013
 /// [Doc Types to [Namespace to Items]] dictionary
 public typealias RequestItems = [String: [String: [String]]]
 
+/// [Doc Types to [dataFormat to [Namespace to Items]]] dictionary
+public typealias RequestedDocumentFormatItems = [String: [DataFormat: RequestedDocumentDetails]]
+
+public struct RequestedDocumentDetails {
+    var allowedDocTypes :[String] = []
+    var fields: [String: [String]] = [:] //[Namespace to Items]
+}
+
 /// Presentation service abstract protocol
 public protocol PresentationService {
 	/// Status of the data transfer

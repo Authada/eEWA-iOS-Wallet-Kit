@@ -45,7 +45,7 @@ public enum FlowType: Codable, Hashable {
 }
 
 /// Data format of the exchanged data
-public enum DataFormat: String {
+public enum DataFormat: String, Sendable {
 	case cbor = "cbor"
 	case sdjwt = "sdjwt"
 }

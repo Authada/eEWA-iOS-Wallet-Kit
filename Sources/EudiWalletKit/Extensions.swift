@@ -32,18 +32,34 @@ limitations under the License.
 */
 import Foundation
 import OpenID4VCI
+import WalletStorage
 
 extension String {
-	public func translated() -> String {
-		NSLocalizedString(self, comment: "")
-	}
+    public func translated() -> String {
+        NSLocalizedString(self, comment: "")
+    }
 }
 
 extension Array where Element == Display {
-	func getName() -> String? {
-		(first(where: { $0.locale == Locale.current }) ?? first)?.name
-	}
+    func getName() -> String? {
+        (first(where: { $0.locale == Locale.current }) ?? first)?.name
+    }
 }
 
+extension Bundle {
+    func getURLSchemas() -> [String]? {
+        guard let urlTypes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String:Any]], let schema = urlTypes.first, let urlSchemas = schema["CFBundleURLSchemes"] as? [String] else {return nil}
+        return urlSchemas
+    }
+}
 
+extension FileManager {
+    public static func getCachesDirectory() throws -> URL {
+            let paths = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
+            guard paths.count > 0 else {
+                throw WalletError(description: "No downloads directory found")
+            }
+            return paths[0]
+    }
+}
 

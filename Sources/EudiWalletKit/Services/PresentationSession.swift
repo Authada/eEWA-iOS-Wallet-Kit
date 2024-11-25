@@ -39,6 +39,13 @@ import LocalAuthentication
 ///
 /// This class wraps the ``PresentationService`` instance, providing bindable fields to a SwifUI view
 public class PresentationSession: ObservableObject {
+    
+    public struct DocIDAndType {
+        public let docId: String
+        public let docTypes: [String]
+        public let dataFormat: DataFormat?
+    }
+    
 	public var presentationService: any PresentationService
 	/// Reader certificate issuer (only for BLE flow wih verifier using reader authentication)
 	@Published public var readerCertIssuer: String?
@@ -60,11 +67,11 @@ public class PresentationSession: ObservableObject {
 	/// Device engagement data (QR data for the BLE flow)
 	@Published public var deviceEngagement: String?
 	// map of document id to doc types
-	public var docIdAndTypes: [String: String]
+    public var docIdAndTypes: [DocIDAndType]
 	/// User authentication required
 	var userAuthenticationRequired: Bool
 	
-	public init(presentationService: any PresentationService, docIdAndTypes: [String: String], userAuthenticationRequired: Bool) {
+	public init(presentationService: any PresentationService, docIdAndTypes: [DocIDAndType], userAuthenticationRequired: Bool) {
 		self.presentationService = presentationService
 		self.docIdAndTypes = docIdAndTypes
 		self.userAuthenticationRequired = userAuthenticationRequired
@@ -78,12 +85,12 @@ public class PresentationSession: ObservableObject {
 	func decodeRequest(_ request: [String: Any]) throws {
 		guard docIdAndTypes.count > 0 else { throw Self.makeError(str: "No documents added to session ")}
 		// show the items as checkboxes
-		guard let validRequestItems = request[UserRequestKeys.valid_items_requested.rawValue] as? RequestItems else { return }
+        guard let validRequestItems = request[UserRequestKeys.valid_items_requested.rawValue] as? RequestedDocumentFormatItems else { return }
 		disclosedDocuments = [DocElementsViewModel]()
-		for (docId, docType) in docIdAndTypes {
-			var tmp = validRequestItems.toDocElementViewModels(docId: docId, docType: docType, valid: true)
-			if let errorRequestItems = request[UserRequestKeys.error_items_requested.rawValue] as? RequestItems, errorRequestItems.count > 0 {
-				tmp = tmp.merging(with: errorRequestItems.toDocElementViewModels(docId: docId, docType: docType, valid: false))
+		for docIdAndType in docIdAndTypes {
+            var tmp = validRequestItems.toDocElementViewModels(docId: docIdAndType.docId, docTypes: docIdAndType.docTypes, dataFormat: docIdAndType.dataFormat, valid: true)
+            if let errorRequestItems = request[UserRequestKeys.error_items_requested.rawValue] as? RequestedDocumentFormatItems, errorRequestItems.count > 0 {
+                tmp = tmp.merging(with: errorRequestItems.toDocElementViewModels(docId: docIdAndType.docId, docTypes: docIdAndType.docTypes, dataFormat: docIdAndType.dataFormat, valid: false))
 			}
 			disclosedDocuments.append(contentsOf: tmp)
 		}

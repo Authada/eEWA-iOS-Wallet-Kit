@@ -109,9 +109,29 @@ class Openid4VpUtils {
         return nil
     }
     
+    internal static func vctFilterDocTypes(inDesc:InputDescriptor) -> [String]? {
+        let fields = inDesc.constraints.fields
+        var vctField :Field? = nil
+        for field in fields {
+            if field.paths.contains("$.vct") {
+                vctField = field
+                break
+            }
+        }
+        if let vctField, let filter = vctField.filter, filter["type"] as? String == "string" {
+            if let enumValue = filter["enum"] as? [String] {
+                return enumValue
+            }
+            else if let constValue = filter["const"] as? String {
+                return [constValue]
+            }
+        }
+        return nil
+    }
+    
 	/// Parse request from presentation definition (Presentation Exchange 2.0.0 protocol)
-	static func parsePresentationDefinition(_ presentationDefinition: PresentationDefinition, logger: Logger? = nil) throws -> RequestItems? {
-		var res = RequestItems()
+    static func parsePresentationDefinition(_ presentationDefinition: PresentationDefinition, logger: Logger? = nil) throws -> RequestedDocumentFormatItems? {
+		var res = RequestedDocumentFormatItems()
 		for inputDescriptor in presentationDefinition.inputDescriptors {
 			guard let fc = inputDescriptor.formatContainer else { logger?.warning("Input descriptor with id \(inputDescriptor.id) is invalid "); continue }
             
@@ -122,21 +142,37 @@ class Openid4VpUtils {
                 continue
             }
             
-			let docType = inputDescriptor.id.trimmingCharacters(in: .whitespacesAndNewlines)
+			let identifierAndMdocType = inputDescriptor.id.trimmingCharacters(in: .whitespacesAndNewlines)
             let kvs: [(String, String)]
+            let allowedDocTyps: [String]
             
+            let dataFormat :DataFormat
             if (format == "vc+sd-jwt") {
+                dataFormat = .sdjwt
                 let pathRx = try NSRegularExpression(pattern: "\\$\\.(.+)", options: .caseInsensitive)
-                kvs = inputDescriptor.constraints.fields.compactMap(\.paths.first).compactMap { Self.extractSdJwtField($0, docType:docType, pathRx: pathRx) }
+                let vctFilterDocTypes = vctFilterDocTypes(inDesc: inputDescriptor)
+                if let vctFilterDocTypes {
+                    allowedDocTyps = vctFilterDocTypes
+                }
+                else {
+                    //Fallback to id
+                    allowedDocTyps = [identifierAndMdocType]
+                }
+                kvs = inputDescriptor.constraints.fields.compactMap(\.paths.first).compactMap { Self.extractSdJwtField($0, docType:identifierAndMdocType, pathRx: pathRx) }
             }
             else {
                 //(format == "mso_mdoc")
+                dataFormat = .cbor
                 let pathRx = try NSRegularExpression(pattern: "\\$\\['([^']+)'\\]\\['([^']+)'\\]", options: .caseInsensitive)
+                allowedDocTyps = [identifierAndMdocType]
                 kvs = inputDescriptor.constraints.fields.compactMap(\.paths.first).compactMap { Self.extractMdocField($0, pathRx: pathRx) }
             }
 	
 			let nsItems = Dictionary(grouping: kvs, by: \.0).mapValues { $0.map(\.1) }
-			if !nsItems.isEmpty { res[docType] = nsItems }
+            
+            let details = RequestedDocumentDetails(allowedDocTypes: allowedDocTyps, fields: nsItems)
+            
+            if !nsItems.isEmpty { res[identifierAndMdocType] = [dataFormat:details] }
 		}
 		return res
 	}

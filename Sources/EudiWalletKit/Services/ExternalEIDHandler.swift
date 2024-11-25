@@ -40,11 +40,11 @@ class ExternalEIDHandler: NSObject {
         NotificationCenter.default.addObserver(self, selector: #selector(self.authenticationTokenReceived(notification:)), name: NSNotification.Name("AuthenticationCode"), object: nil)
         return try await withCheckedThrowingContinuation { c in
             localContinuation = c
-            let request: URLRequest = URLRequest(url: authorizationCodeURL)
-            let sessionConfig: URLSessionConfiguration = URLSessionConfiguration.default
-            let session = URLSession(configuration: sessionConfig, delegate: self, delegateQueue: nil)
-            let dataTast = session.dataTask(with: request)
-            dataTast.resume()
+            if let extrenalURLHandler = EudiWallet.standard.externalURLService {
+                DispatchQueue.main.async {
+                    _ = extrenalURLHandler.openExtern(url: self.authorizationCodeURL)
+                }
+            }
         }
     }
     
@@ -65,22 +65,5 @@ class ExternalEIDHandler: NSObject {
     private func cleanup() {
         localContinuation = nil
         NotificationCenter.default.removeObserver(self, name: Notification.Name("AuthenticationCode"), object: nil)
-    }
-}
-
-extension ExternalEIDHandler: URLSessionDelegate, URLSessionTaskDelegate {
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Swift.Void) {
-        if let redirectURL = request.url, redirectURL.absoluteString.range(of: "eid://") != nil {
-            
-            if let extrenalURLHandler = EudiWallet.standard.externalURLService {
-                DispatchQueue.main.async {
-                    _ = extrenalURLHandler.openExtern(url: redirectURL)
-                }
-                completionHandler(nil)
-                return
-            }
-        }
-        completionHandler(request)
     }
 }
